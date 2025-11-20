@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Zoo Admin — GUI</title>
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <style>
+      :root {
+        --bg: #f6fbf6;
+        --card: #ffffff;
+        --muted: #6b786b;
+        --accent: #1f9d6a;
+        --accent-2: #0b6b43;
+        --border: #e6efe6;
+        --shadow: 0 6px 18px rgba(12, 48, 22, 0.07);
+        --radius: 12px;
+        font-family: Inter, system-ui, Arial;
+      }
+      html,
+      body {
+        margin: 0;
+        background: linear-gradient(180deg, var(--bg), #eef7ee);
+        color: #0b2b1a;
+      }
+      .wrap {
+        max-width: 1200px;
+        margin: 28px auto;
+        padding: 20px;
+      }
+      header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 18px;
+      }
+      h1 {
+        margin: 0;
+        font-size: 20px;
+      }
+      .layout {
+        display: grid;
+        grid-template-columns: 380px 1fr;
+        gap: 18px;
+      }
+      .card {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 16px;
+        box-shadow: var(--shadow);
+      }
+      label {
+        display: block;
+        font-size: 13px;
+        color: var(--muted);
+        margin-top: 6px;
+        margin-bottom: 6px;
+      }
+      input,
+      select {
+        width: 100%;
+        padding: 10px;
+        border-radius: 8px;
+        border: 1px solid #dfeede;
+        background: #fbfffb;
+      }
+      button {
+        background: linear-gradient(180deg, var(--accent), var(--accent-2));
+        color: #fff;
+        border: none;
+        padding: 10px;
+        border-radius: 10px;
+        cursor: pointer;
+        margin-top: 8px;
+        width: 100%;
+      }
+      .results-area {
+        min-height: 420px;
+        max-height: 75vh;
+        overflow: auto;
+        border: 1px dashed #e9f3e9;
+        border-radius: 10px;
+        background: #f9fff9;
+        padding: 12px;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 14px;
+      }
+      th,
+      td {
+        padding: 8px 10px;
+        border-bottom: 1px solid #edf5ed;
+        text-align: left;
+      }
+      th {
+        background: #f2faf2;
+        color: #205b3a;
+        position: sticky;
+        top: 0;
+      }
+      .muted {
+        color: var(--muted);
+        font-size: 13px;
+      }
+      .two {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+      }
+      @media (max-width: 900px) {
+        .layout {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="wrap">
+      <header>
+        <div>
+          <h1>Zoo Admin GUI</h1>
+          <div class="muted">Full DB Control</div>
+        </div>
+        <div><strong id="connStatus">unknown</strong></div>
+      </header>
+
+      <div class="layout">
+        <!-- Left -->
+        <div class="card">
+          <h3>Quick Queries</h3>
+          <select id="listSelect">
+            <option value="animals">Animals</option>
+            <option value="species">Species</option>
+            <option value="enclosures">Enclosures</option>
+            <option value="food">Food</option>
+            <option value="medrecs">Medical Records</option>
+            <option value="events">Events</option>
+            <option value="visitors">Visitors</option>
+            <option value="tickets">Tickets</option>
+            <option value="employees">Employees</option>
+            <option value="infra">Infra</option>
+            <option value="vw_enclosure_status">Enclosure Status</option>
+            <option value="feed_log">Feed Log</option>
+            <option value="notifications">Notifications</option>
+            <option value="eats">Eats</option>
+            <option value="employee_enclosure">Employee-Enclosure</option>
+            <option value="animal_enclosure">Animal-Enclosure</option>
+            <option value="event_infra">Event-Infra</option>
+            <optgroup label="JOIN Queries">
+              <option value="inner_animal_species"
+                >INNER JOIN — Animals <-> Species</option
+              >
+              <option value="inner_event_infra"
+                >INNER JOIN — Events <-> Infra</option
+              >
+              <option value="left_enclosure_animals"
+                >LEFT JOIN — Enclosure -> Animals</option
+              >
+              <option value="right_animal_medrec"
+                >RIGHT JOIN — Animals <- Medical Records</option
+              >
+            </optgroup>
+          </select>
+          <button onclick="fetchList()">Fetch</button>
+
+          <hr />
+
+          <h3>Functions</h3>
+          <label>Animal Age</label>
+          <input id="func_animal_id" placeholder="Animal ID" />
+          <button onclick="getAnimalAge()">Get Age</button>
+
+          <label>Enclosure Remaining</label>
+          <input id="func_enclosure_id" placeholder="Enclosure ID" />
+          <button onclick="getEnclosureRemaining()">Get Remaining</button>
+
+          <hr />
+
+          <h3>Actions (Stored Procedures)</h3>
+          <label>Schedule Event</label>
+          <input id="ev_title" placeholder="Event Title" />
+          <div class="two">
+            <input id="ev_date" placeholder="YYYY-MM-DD" />
+            <input id="ev_eid" placeholder="Enclosure ID (optional)" />
+          </div>
+          <label>Infra IDs (comma separated)</label>
+          <input id="ev_infra_ids" placeholder="e.g. 1,2,5" />
+          <input id="ev_capacity" placeholder="Capacity" />
+          <button onclick="scheduleEvent()">Schedule Event</button>
+
+          <label style="margin-top: 8px;">Assign Employee</label>
+          <div class="two">
+            <input id="ae_emp" placeholder="Employee ID" />
+            <input id="ae_enc" placeholder="Enclosure ID" />
+          </div>
+          <input id="ae_role" placeholder="Role Description" />
+          <button onclick="assignEmployee()">Assign Employee</button>
+
+          <hr />
+
+          <h3>Insert Record (Dynamic)</h3>
+          <label>Choose Table</label>
+          <select id="insert_table" onchange="renderInsertFields()">
+            <option value="">-- Select --</option>
+            <option value="animal">Animal</option>
+            <option value="species">Species</option>
+            <option value="enclosure">Enclosure</option>
+            <option value="medrec">Medical Record</option>
+            <option value="eats">Eats</option>
+            <option value="food">Food</option>
+            <option value="employee">Employee</option>
+            <option value="employee_enclosure">Employee-Enclosure</option>
+            <option value="animal_enclosure">Animal-Enclosure</option>
+            <option value="visitor">Visitor</option>
+            <option value="ticket">Ticket</option>
+            <option value="infra">Infra</option>
+            <option value="event">Event</option>
+            <option value="event_infra">Event-Infra</option>
+          </select>
+          <div id="insert_fields"></div>
+          <button
+            id="insertBtn"
+            style="display: none;"
+            onclick="submitInsert()"
+          >
+            Insert
+          </button>
+
+          <hr />
+
+          <h3>Delete Record</h3>
+          <label>Choose Table</label>
+          <select id="delete_table">
+            <option value="">-- Select Table --</option>
+            <option value="animal">Animal</option>
+            <option value="species">Species</option>
+            <option value="enclosure">Enclosure</option>
+            <option value="medrec">Medical Record</option>
+            <option value="eats">Eats</option>
+            <option value="food">Food</option>
+            <option value="employee">Employee</option>
+            <option value="employee_enclosure">Employee-Enclosure</option>
+            <option value="animal_enclosure">Animal-Enclosure</option>
+            <option value="visitor">Visitor</option>
+            <option value="ticket">Ticket</option>
+            <option value="event">Event</option>
+            <option value="event_infra">Event-Infra</option>
+            <option value="infra">Infra</option>
+            <option value="feed_log">Feed Log</option>
+            <option value="notifications">Notifications</option>
+          </select>
+          <input id="delete_id" placeholder="Enter Record ID" />
+          <button onclick="deleteRecord()">Delete Record</button>
+          <hr />
+          <h3>Quick Feed Log Insert</h3>
+          <div class="two">
+            <input id="feed_aid" placeholder="Animal ID" />
+            <input id="feed_fid" placeholder="Food ID" />
+          </div>
+          <div class="two">
+            <input id="feed_amount" placeholder="Amount (kg)" />
+            <input id="feed_by" placeholder="Fed By (emp_id optional)" />
+          </div>
+          <button onclick="insertFeedLog()">Insert Feed Log</button>
+        </div>
+
+        <!-- Right -->
+        <div class="card">
+          <h3 id="resultsTitle">Results</h3>
+          <div id="resultsArea" class="results-area">
+            <div class="muted">No results yet</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const el = (id) => document.getElementById(id);
+      function setConnStatus(t, ok = true) {
+        el("connStatus").textContent = t;
+        el("connStatus").style.color = ok ? "green" : "red";
+      }
+
+      async function apiFetch(path, opts) {
+        try {
+          const res = await fetch(path, opts);
+          if (!res.ok) {
+            const txt = await res.text();
+            throw new Error(txt || res.statusText);
+          }
+          setConnStatus("connected", true);
+          return await res.json();
+        } catch (err) {
+          console.error("API error", err);
+          setConnStatus("error", false);
+          showResults("Error", [{ error: String(err) }]);
+          return null;
+        }
+      }
+
+      function showResults(title, data) {
+        el("resultsTitle").textContent = title;
+        const area = el("resultsArea");
+        area.innerHTML = "";
+        if (!data) {
+          area.textContent = "No results";
+          return;
+        }
+        if (!Array.isArray(data)) data = [data];
+        if (data.length === 0) {
+          area.textContent = "No rows";
+          return;
+        }
+
+        const cols = new Set();
+        data.forEach((r) => Object.keys(r || {}).forEach((k) => cols.add(k)));
+        const colArr = Array.from(cols);
+        const tbl = document.createElement("table");
+        const thead = document.createElement("thead");
+        const thr = document.createElement("tr");
+        colArr.forEach((c) => {
+          const th = document.createElement("th");
+          th.textContent = c;
+          thr.appendChild(th);
+        });
+        thead.appendChild(thr);
+        tbl.appendChild(thead);
+
+        const tbody = document.createElement("tbody");
+        data.forEach((row) => {
+          const tr = document.createElement("tr");
+          colArr.forEach((c) => {
+            const td = document.createElement("td");
+            let v = row[c];
+            if (v === null || v === undefined) v = "";
+            td.textContent = String(v);
+            tr.appendChild(td);
+          });
+          tbody.appendChild(tr);
+        });
+        tbl.appendChild(tbody);
+        area.appendChild(tbl);
+      }
+
+      // Quick queries & functions
+      async function fetchList() {
+        const v = el("listSelect").value;
+        const data = await apiFetch("/api/query?v=" + encodeURIComponent(v));
+        if (data) showResults(v, data);
+      }
+
+      async function getAnimalAge() {
+        const id = el("func_animal_id").value;
+        if (!id) return alert("Enter animal id");
+        const res = await apiFetch("/api/animal_age/" + encodeURIComponent(id));
+        if (res) showResults("Animal Age", [res]);
+      }
+
+      async function getEnclosureRemaining() {
+        const id = el("func_enclosure_id").value;
+        if (!id) return alert("Enter enclosure id");
+        const res = await apiFetch(
+          "/api/enclosure_remaining/" + encodeURIComponent(id)
+        );
+        if (res) showResults("Enclosure Remaining", [res]);
+      }
+
+      // Stored procedures
+      async function scheduleEvent() {
+        const payload = {
+          title: el("ev_title").value || "Untitled",
+          e_date: el("ev_date").value || null,
+          e_id: el("ev_eid").value ? parseInt(el("ev_eid").value, 10) : null,
+          capacity: el("ev_capacity").value
+            ? parseInt(el("ev_capacity").value, 10)
+            : 0,
+          infra_ids: el("ev_infra_ids").value
+            ? el("ev_infra_ids")
+                .value.split(",")
+                .map((x) => parseInt(x.trim(), 10))
+                .filter(Boolean)
+            : [],
+        };
+        const res = await apiFetch("/api/schedule_event", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        if (res) showResults("Scheduled Event", [res]);
+      }
+
+      async function assignEmployee() {
+        const payload = {
+          emp_id: parseInt(el("ae_emp").value || "0", 10),
+          e_id: parseInt(el("ae_enc").value || "0", 10),
+          role_desc: el("ae_role").value || "",
+        };
+        const res = await apiFetch("/api/assign_employee", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        if (res) showResults("Assign Employee", [res]);
+      }
+
+      // Insert templates (match server insertSchemas)
+      const insertTemplates = {
+        animal: [
+          { id: "name", label: "Name" },
+          { id: "species_id", label: "Species ID" },
+          { id: "birth_date", label: "Birth Date" },
+          { id: "gender", label: "Gender" },
+          { id: "arrival_date", label: "Arrival Date" },
+        ],
+        species: [
+          { id: "scientific_name", label: "Scientific Name" },
+          { id: "common_name", label: "Common Name" },
+          { id: "conservation_status", label: "Conservation Status" },
+          { id: "size", label: "Size" },
+        ],
+        enclosure: [
+          { id: "name", label: "Name" },
+          { id: "location", label: "Location" },
+          { id: "capacity", label: "Capacity" },
+          { id: "size", label: "Size" },
+        ],
+        medrec: [
+          { id: "a_id", label: "Animal ID" },
+          { id: "last_checked", label: "Last Checked (YYYY-MM-DD)" },
+          { id: "next_check", label: "Next Check (optional)" },
+          { id: "diseases", label: "Diseases" },
+          { id: "notes", label: "Notes" },
+        ],
+        eats: [
+          { id: "a_id", label: "Animal ID (optional)" },
+          { id: "species_id", label: "Species ID (optional)" },
+          { id: "f_id", label: "Food ID" },
+          {
+            id: "preference",
+            label: "Preference (primary/occasional/supplement)",
+          },
+        ],
+        food: [
+          { id: "name", label: "Name" },
+          { id: "type", label: "Type" },
+          { id: "quantity", label: "Quantity" },
+          { id: "unit", label: "Unit" },
+          { id: "price_per_unit", label: "Price per unit" },
+        ],
+        employee: [
+          { id: "name", label: "Name" },
+          { id: "role", label: "Role" },
+          { id: "salary", label: "Salary" },
+          { id: "hire_date", label: "Hire Date (YYYY-MM-DD)" },
+        ],
+        employee_enclosure: [
+          { id: "emp_id", label: "Employee ID" },
+          { id: "e_id", label: "Enclosure ID" },
+          { id: "assigned_from", label: "Assigned From (datetime optional)" },
+          { id: "assigned_to", label: "Assigned To (date optional)" },
+          { id: "role_desc", label: "Role Desc" },
+        ],
+        animal_enclosure: [
+          { id: "a_id", label: "Animal ID" },
+          { id: "e_id", label: "Enclosure ID" },
+          { id: "assigned_from", label: "Assigned From (datetime optional)" },
+          { id: "assigned_to", label: "Assigned To (date optional)" },
+        ],
+        visitor: [
+          { id: "name", label: "Name" },
+          { id: "age", label: "Age" },
+          { id: "contact", label: "Contact (email)" },
+        ],
+        ticket: [
+          { id: "type", label: "Type" },
+          { id: "price", label: "Price" },
+          { id: "visitor_id", label: "Visitor ID (optional)" },
+        ],
+        infra: [
+          { id: "name", label: "Name" },
+          { id: "type", label: "Type" },
+          { id: "size", label: "Size" },
+        ],
+        event: [
+          { id: "title", label: "Title" },
+          { id: "e_date", label: "Date (YYYY-MM-DD)" },
+          { id: "e_id", label: "Enclosure ID (optional)" },
+          { id: "location", label: "Location (optional)" },
+          { id: "capacity", label: "Capacity" },
+        ],
+        event_infra: [
+          { id: "ev_id", label: "Event ID" },
+          { id: "i_id", label: "Infra ID" },
+          { id: "quantity", label: "Quantity" },
+        ],
+      };
+
+      function renderInsertFields() {
+        const t = el("insert_table").value;
+        const cont = el("insert_fields");
+        cont.innerHTML = "";
+        el("insertBtn").style.display = t ? "block" : "none";
+        if (!t || !insertTemplates[t]) return;
+        insertTemplates[t].forEach((f) => {
+          const div = document.createElement("div");
+          div.innerHTML = `<label>${f.label}</label><input id="ins_${f.id}" placeholder="${f.label}">`;
+          cont.appendChild(div);
+        });
+      }
+
+      async function submitInsert() {
+        const table = el("insert_table").value;
+        if (!table) return alert("Select table");
+        const tmpl = insertTemplates[table];
+        const payload = {};
+        tmpl.forEach((f) => {
+          const v = el("ins_" + f.id).value;
+          payload[f.id] = v === "" ? null : v;
+        });
+        const res = await apiFetch("/api/insert/" + encodeURIComponent(table), {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        if (res) showResults("Insert Result", [res]);
+      }
+
+      async function insertFeedLog() {
+        const payload = {
+          a_id: parseInt(el("feed_aid").value || "0", 10),
+          f_id: parseInt(el("feed_fid").value || "0", 10),
+          amount: parseFloat(el("feed_amount").value || "0"),
+          unit: "kg",
+          fed_by: el("feed_by").value
+            ? parseInt(el("feed_by").value, 10)
+            : null,
+        };
+        const data = await apiFetch("/api/feed_log", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        if (data) showResults("Feed Log Inserted", [data]);
+      }
+
+      async function deleteRecord() {
+        const table = el("delete_table").value;
+        const id = el("delete_id").value;
+        if (!table || !id) return alert("Select table and enter ID");
+        if (
+          !confirm(
+            `⚠️ Are you sure you want to delete from "${table}" where id=${id}?`
+          )
+        )
+          return;
+        const data = await apiFetch(`/api/delete/${table}/${id}`, {
+          method: "DELETE",
+        });
+        if (data) showResults("Delete Result", [data]);
+      }
+
+      (async function init() {
+        const species = await apiFetch("/api/query?v=species");
+        if (species) showResults("Species", species);
+      })();
+    </script>
+  </body>
+</html>
